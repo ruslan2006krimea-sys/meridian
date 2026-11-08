@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050C29">
+<title>Меридиан — маршрут Севи</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Tektur:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* ===== Токены «Меридиан». Заголовочный шрифт Hibiny; пока его нет — Tektur. Подключить Hibiny: поменять --font-display ===== */
+:root{
+  --fog:#F4F8FF;
+  --navy-50:#F4F7FE;--navy-100:#E3EBFF;--navy-200:#CAD7F9;--navy-300:#A8BAE7;--navy-400:#8397CB;--navy-500:#586CA4;--navy-600:#324377;--navy-700:#223163;--navy-800:#152250;--navy-900:#09133D;--navy-950:#03062C;
+  --amber-300:#F2B682;--amber-400:#E49E5E;--amber-500:#D3873C;--amber-600:#B36D24;--amber-700:#8E530D;
+  --n-500:#777A82;--n-600:#55585F;
+  --err-dark:#F2897E;--err-light:#AC312C;
+  /* тон подложки: Соловки (холодный) — фото архипелага */
+  --lo:#050C29;--hi:#AFC7E1;
+  --glass:rgba(9,19,61,.5);--glass-line:rgba(255,255,255,.2);
+  --cut-s:10px;--cut-m:16px;--cut-l:24px;--cut-xl:40px;
+  --font-display:"Hibiny","Tektur",system-ui,sans-serif;
+  --font-text:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;background:var(--lo)}
+body{font:400 15px/22px var(--font-text);color:#fff;min-height:100vh;min-height:100dvh;overflow-x:hidden;font-variant-numeric:tabular-nums}
+button,input,textarea{font:inherit;color:inherit}
+a{color:inherit}
+img,svg{display:block}
+
+/* ===== Подложка: фото (полупрозрачное, ч/б) → тон → узоры → скрим ===== */
+.sub{position:fixed;inset:0;isolation:isolate;background:var(--lo);z-index:-1;overflow:hidden}
+.sub img.photo{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:grayscale(1) contrast(1.08);opacity:.72;transition:opacity .4s var(--ease)}
+.sub img.photo[hidden]{display:none}
+.sub::before{content:"";position:absolute;inset:0;z-index:1;background:var(--hi);mix-blend-mode:multiply}
+.sub::after{content:"";position:absolute;inset:0;z-index:2;background:var(--lo);mix-blend-mode:lighten}
+.scrim{position:absolute;inset:0;z-index:3;transition:background .24s var(--ease)}
+.scrim.ambient{background:linear-gradient(rgba(5,12,41,.38),rgba(5,12,41,.82))}
+.scrim.focus{background:rgba(5,12,41,.66)}
+.scrim.reading{background:rgba(5,12,41,.8)}
+.scrim.camera{background:#07090E}
+.pat{position:absolute;z-index:4;pointer-events:none;transition:opacity .4s}
+.pat.waves{left:0;right:0;bottom:0;height:34%;background:url(img/waves-amber.svg) 0 0/80px 24px repeat;opacity:.3;-webkit-mask-image:linear-gradient(transparent,#000 70%);mask-image:linear-gradient(transparent,#000 70%)}
+.pat.waves-top{left:0;right:0;top:0;height:26%;background:url(img/waves-fog.svg) 0 0/80px 24px repeat;opacity:.14;-webkit-mask-image:linear-gradient(#000,transparent);mask-image:linear-gradient(#000,transparent)}
+.pat.rings{top:-170px;right:-200px;width:460px;height:560px;background:url(img/rings.svg) no-repeat 0 0/100% 100%;opacity:.55}
+.pat.off{opacity:0}
+@media (min-width:700px){.pat.rings{right:calc(50% - 400px)}}
+
+/* ===== Каркас ===== */
+.app{max-width:430px;margin:0 auto;min-height:100vh;min-height:100dvh;padding:calc(20px + var(--safe-t)) 20px calc(32px + var(--safe-b));display:flex;flex-direction:column}
+.app.has-dock{padding-bottom:calc(128px + var(--safe-b))}
+.screen{display:flex;flex-direction:column;gap:32px}
+.screen-in{animation:in .24s var(--ease) both}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.stack{display:flex;flex-direction:column;gap:12px}
+.stack-16{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ===== Типографика ===== */
+.h1{font:700 32px/34px var(--font-display)}
+.h2{font:700 24px/28px var(--font-display)}
+.sub-h{font:400 20px/24px var(--font-display)}
+.label{font:700 14px/16px var(--font-display);text-transform:lowercase;letter-spacing:.02em;color:var(--amber-300)}
+.counter{font:400 72px/72px var(--font-display);font-variant-numeric:tabular-nums}
+.story{font:400 17px/26px var(--font-text)}
+.body{font:400 15px/22px var(--font-text)}
+.cap{font:500 13px/18px var(--font-text)}
+.muted{color:rgba(255,255,255,.8)}
+.story p+p,.body p+p{margin-top:12px}
+
+/* ===== Логотип ===== */
+.logo{display:flex;flex-direction:column;align-items:center;gap:14px;text-decoration:none}
+.logo .em{width:132px;height:auto}
+.logo .wd{width:236px;height:auto}
+.logo-sm{display:flex;align-items:center;gap:10px;text-decoration:none;min-height:48px}
+.logo-sm .em{width:40px;height:auto}
+.logo-sm .nm{width:92px;height:auto}
+
+/* ===== Место для маскота ===== */
+.mascot{position:relative;height:224px;display:grid;place-items:center;text-align:center;color:rgba(255,255,255,.72)}
+.mascot svg.frame{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.mascot .in{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 24px}
+.mascot .in svg{width:28px;height:28px;color:var(--amber-300)}
+
+/* ===== Срезы 45° ===== */
+.cut{--cut:var(--cut-l);position:relative;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,0 100%)}
+.cut::after{content:"";position:absolute;top:0;right:0;width:var(--cut);height:var(--cut);background:linear-gradient(to bottom left,transparent 50%,rgba(255,255,255,.28) 50%);pointer-events:none}
+.cut-l{--cut:var(--cut-l);position:relative;clip-path:polygon(var(--cut) 0,100% 0,100% 100%,0 100%,0 var(--cut))}
+.cut-l::after{content:"";position:absolute;top:0;left:0;width:var(--cut);height:var(--cut);background:linear-gradient(to bottom right,transparent 50%,var(--amber-500) 50%);pointer-events:none}
+/* двойной срез — угловатые элементы управления: верх справа + низ слева */
+.cut2{--cut:var(--cut-m);position:relative;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.cut2::after{content:"";position:absolute;top:0;right:0;width:var(--cut);height:var(--cut);background:linear-gradient(to bottom left,transparent 50%,rgba(255,255,255,.28) 50%);pointer-events:none}
+.cut-s{--cut:var(--cut-s)}.cut-m{--cut:var(--cut-m)}.cut-xl{--cut:var(--cut-xl)}
+
+/* ===== Поверхности ===== */
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--glass-line);color:#fff}
+.panel{background:var(--fog);color:var(--navy-900);border:1px solid var(--navy-200)}
+.panel .label{color:var(--amber-700)}
+.panel .muted{color:var(--n-600)}
+.pad{padding:20px}
+
+/* ===== Кнопки (двойной срез) ===== */
+.btn{--cut:12px;display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 22px;border:0;cursor:pointer;font:600 16px/20px var(--font-text);text-decoration:none;text-align:center;width:100%;position:relative;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)));transition:filter .15s}
+.btn::after{content:"";position:absolute;top:0;right:0;width:var(--cut);height:var(--cut);background:linear-gradient(to bottom left,transparent 50%,rgba(255,255,255,.3) 50%)}
+.btn-primary{background:var(--amber-500);color:var(--navy-950)}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-primary:active{filter:brightness(.94)}
+.btn-glass{background:var(--glass);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:inset 0 0 0 1px var(--glass-line);color:#fff}
+.btn-glass:hover{background:rgba(9,19,61,.7)}
+.btn-ghost-panel{background:transparent;color:var(--navy-600);box-shadow:inset 0 0 0 1.5px var(--navy-300)}
+.btn svg{width:20px;height:20px;flex:none}
+.link{display:inline-flex;align-items:center;gap:8px;min-height:48px;background:none;border:0;cursor:pointer;font:600 16px/20px var(--font-text);color:#fff;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.panel .link{color:var(--navy-600)}
+.link svg{width:18px;height:18px}
+:focus-visible{outline:2px solid var(--fog);outline-offset:2px}
+.panel :focus-visible{outline-color:var(--navy-600)}
+.btn:focus-visible{clip-path:none}
+
+/* ===== Нижняя панель ===== */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:0 12px calc(12px + var(--safe-b));pointer-events:none}
+.dock-in{--cut:14px;max-width:406px;margin:0 auto;display:flex;gap:8px;padding:8px;pointer-events:auto;background:rgba(9,19,61,.8);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:0 12px 32px rgba(3,6,44,.35);clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.dock .btn{white-space:nowrap}
+.dock .btn-glass{width:auto;padding:0 16px}
+
+/* ===== Шапка ===== */
+.top{display:flex;align-items:center;gap:10px;min-height:48px}
+.chip-count{--cut:8px;font:700 14px/16px var(--font-display);padding:9px 12px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.back{display:inline-flex;align-items:center;gap:6px;min-height:48px;padding-right:8px;font:600 15px/20px var(--font-text);text-decoration:none;color:#fff}
+.back svg{width:20px;height:20px}
+.iconlink{--cut:10px;display:grid;place-items:center;width:48px;height:48px;text-decoration:none;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.iconlink svg{width:22px;height:22px}
+
+/* ===== Знак остановки ===== */
+.badge{--cut:var(--cut-s);width:44px;height:44px;flex:none;display:grid;place-items:center;font:700 18px/20px var(--font-display);position:relative;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.badge::after{content:"";position:absolute;top:0;right:0;width:var(--cut);height:var(--cut);background:linear-gradient(to bottom left,transparent 50%,rgba(255,255,255,.3) 50%)}
+.badge.closed{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px var(--glass-line);color:rgba(255,255,255,.7)}
+.badge.done{background:var(--amber-500);color:var(--navy-950)}
+.badge.collect{background:linear-gradient(45deg,var(--amber-500) 50%,rgba(255,255,255,.1) 50%) 100% 100%/300% 300% no-repeat;color:var(--navy-950);animation:collect .48s var(--ease) forwards}
+@keyframes collect{to{background-position:0 0}}
+
+/* ===== Иконки моделей: обычная и активная ===== */
+.ico{display:block;flex:none;width:64px;height:64px;object-fit:contain}
+.ico.big{width:88px;height:88px}
+.ico.sm{width:44px;height:44px}
+.ico.dim{opacity:.45}
+.ico.pop{animation:pop .48s var(--ease)}
+@keyframes pop{0%{transform:scale(.86);filter:saturate(0)}100%{transform:none;filter:none}}
+.strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.strip .ico{width:100%;height:auto;aspect-ratio:1}
+.strip-cap{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;font:700 12px/14px var(--font-display);color:rgba(255,255,255,.72);text-align:center;margin-top:6px}
+
+/* ===== Метки ===== */
+.tag{--cut:7px;display:inline-flex;align-items:center;min-height:24px;padding:3px 12px;font:500 12px/16px var(--font-text);position:relative;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.tag.fact{background:var(--navy-100);color:var(--navy-700)}
+.tag.edit{background:transparent;color:var(--amber-700);box-shadow:inset 0 0 0 1px var(--amber-500)}
+.glass .tag.edit{color:var(--amber-300);box-shadow:inset 0 0 0 1px var(--amber-400)}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ===== Прогресс: параллелограммы ===== */
+.bars{display:grid;grid-template-columns:repeat(6,1fr);gap:3px}
+.bars i{height:8px;background:rgba(255,255,255,.2);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.bars i.on{background:var(--amber-500)}
+.progress{display:flex;align-items:flex-end;gap:16px}
+.progress .grow{padding-bottom:10px;display:flex;flex-direction:column;gap:10px}
+
+/* ===== Маршрут: список ===== */
+.route{list-style:none;display:flex;flex-direction:column}
+.route li{display:grid;grid-template-columns:20px 1fr auto;column-gap:16px;position:relative;padding-bottom:20px}
+.route li:last-child{padding-bottom:0}
+.route li::before{content:"";position:absolute;left:9px;top:24px;bottom:0;width:0;border-left:2px dashed rgba(255,255,255,.6)}
+.route li.passed::before{border-left:2px solid var(--amber-500)}
+.route li.passed.grow-line::before{animation:line .6s var(--ease) both;transform-origin:top}
+@keyframes line{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.route li:last-child::before{display:none}
+.node{width:20px;height:20px;margin-top:2px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.node.done{background:var(--amber-500)}
+.node.next{background:var(--fog)}
+.node.ahead{background:rgba(255,255,255,.6);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%,2px 50%,50% calc(100% - 2px),calc(100% - 2px) 50%,50% 2px,2px 50%,0 50%)}
+.node-wrap{position:relative}
+.node-wrap.halo::before{content:"";position:absolute;left:-7px;top:-5px;width:34px;height:34px;background:rgba(244,248,255,.18);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.r-title{font:700 18px/22px var(--font-display);text-decoration:none;color:#fff}
+a.r-title{text-decoration:underline;text-decoration-color:rgba(255,255,255,.35);text-underline-offset:4px}
+.r-zone{font:500 13px/18px var(--font-text);color:rgba(255,255,255,.72);margin-top:4px}
+.r-status{font:700 13px/16px var(--font-display);text-transform:lowercase;padding-top:4px;white-space:nowrap}
+.r-status.done{color:var(--amber-300)}.r-status.next{color:var(--fog)}.r-status.ahead{color:rgba(255,255,255,.6)}
+
+/* ===== Карта ===== */
+.mapcard{padding:0;overflow:hidden}
+.mapcard .map{width:100%;height:auto}
+.mapcard .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 16px 6px 20px;border-top:1px solid var(--navy-200)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font:500 13px/18px var(--font-text)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;clip-path:polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,0 100%)}
+.mapwrap{overflow:auto;margin:0 -20px;-webkit-overflow-scrolling:touch;background:#E3EBFF;border-top:1px solid var(--navy-200);border-bottom:1px solid var(--navy-200)}
+.mapwrap .map{width:733px;height:auto;max-width:none}
+
+/* ===== Коллекция ===== */
+.cards{display:flex;flex-direction:column;gap:12px}
+.ccard{display:flex;gap:16px;align-items:center;padding:14px 16px;text-decoration:none;--cut:var(--cut-m)}
+.ccard .h{font:700 18px/22px var(--font-display)}
+.ccard .t{margin-top:6px}
+a.ccard.panel:hover{background:#fff}
+
+/* ===== Сообщения ===== */
+.msg{--cut:12px;display:flex;gap:12px;align-items:flex-start;padding:14px 16px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.msg .ic{width:24px;height:24px;flex:none;display:grid;place-items:center}
+.msg .ic svg{width:22px;height:22px}
+.msg .mark-sq{flex:none;width:16px;height:16px;margin:3px;background:var(--amber-500);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.msg.calm .mark-sq{background:var(--navy-300)}
+.msg b{font-weight:600}
+.err-ic{color:var(--err-dark)}
+
+/* ===== Остановка ===== */
+.model{display:flex;gap:16px;align-items:center}
+.photo-card{padding:0;overflow:hidden}
+.photo-card .ph{height:150px;background-size:cover;background-position:center;opacity:.6;filter:grayscale(.35);-webkit-mask-image:linear-gradient(#000 40%,transparent);mask-image:linear-gradient(#000 40%,transparent)}
+.photo-card .model{padding:0 20px 20px;margin-top:-56px;position:relative;align-items:flex-end}
+.notice{--cut:10px;background:var(--navy-100);color:var(--navy-900);padding:12px 14px;font:400 15px/22px var(--font-text);clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.notice b{font-weight:600}
+.sevi{display:flex;gap:12px;align-items:center}
+.sevi-av{--cut:8px;width:40px;height:40px;flex:none;display:grid;place-items:center;background:var(--navy-600);color:var(--fog);clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.sevi-av svg{width:22px;height:22px}
+.record{display:flex;gap:14px;align-items:center;padding:16px;--cut:var(--cut-m)}
+.reveal{display:flex;flex-direction:column;gap:12px}
+.next-card{display:flex;gap:16px;align-items:flex-start}
+.src{font:500 13px/18px var(--font-text);color:var(--n-600);border-top:1px solid var(--navy-200);padding-top:12px}
+
+/* ===== Поле ввода ===== */
+.field{display:flex;flex-direction:column;gap:8px}
+.field textarea{--cut:12px;width:100%;min-height:104px;resize:vertical;padding:12px 14px;border:0;background:#fff;color:var(--navy-900);font:400 17px/26px var(--font-text);box-shadow:inset 0 0 0 1.5px var(--navy-300);clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.field textarea:focus{outline:none;box-shadow:inset 0 0 0 2px var(--navy-600)}
+.field textarea::placeholder{color:var(--n-500)}
+
+/* ===== Памятка ===== */
+.memo{--cut:var(--cut-xl);padding:28px 24px 24px}
+.memo ol{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:12px 8px}
+.memo li{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font:500 13px/16px var(--font-text)}
+.memo li .ico{width:56px;height:56px}
+.memo .counter{color:var(--amber-700)}
+.memo .wd{width:150px;height:auto}
+
+/* ===== Сканер ===== */
+.cam{position:relative;width:100%;aspect-ratio:3/4;max-height:56vh;overflow:hidden;background:#07090E;margin:0 auto}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.frame-qr{position:absolute;left:18%;right:18%;top:50%;aspect-ratio:1;transform:translateY(-58%);pointer-events:none;color:var(--fog)}
+.frame-qr svg{width:100%;height:100%;overflow:visible}
+.cam-hint{position:absolute;left:12px;right:12px;bottom:12px;text-align:center;padding:10px 12px;font:500 14px/18px var(--font-text)}
+.cam-off{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+details.demo{border-top:1px solid var(--glass-line);padding-top:12px}
+details.demo summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font:500 14px/18px var(--font-text);color:rgba(255,255,255,.75)}
+.demo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.demo-grid button{min-height:48px;font:700 15px/18px var(--font-display);cursor:pointer}
+
+/* ===== Загрузка ===== */
+.sk{height:16px;background:rgba(255,255,255,.12);clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,0 100%);position:relative;overflow:hidden}
+.sk::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent);transform:translateX(-100%);animation:sh 1.4s infinite}
+@keyframes sh{to{transform:translateX(100%)}}
+.loader{height:3px;background:rgba(255,255,255,.15);overflow:hidden}
+.loader i{display:block;height:100%;width:40%;background:var(--amber-500);animation:ld 1.2s var(--ease) infinite}
+@keyframes ld{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+
+/* ===== Обзор экранов ===== */
+.review{position:sticky;top:0;z-index:30;margin:calc(-20px - var(--safe-t)) -20px 20px;padding:calc(8px + var(--safe-t)) 20px 8px;background:var(--amber-500);color:var(--navy-950);display:flex;gap:12px;align-items:center;font:600 13px/18px var(--font-text)}
+.review a{margin-left:auto;font-weight:600}
+.idx a{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;text-decoration:none}
+.idx a span:first-child{font:700 15px/20px var(--font-display);color:var(--amber-300);min-width:36px}
+.qrs{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.qrs figure{background:#fff;color:var(--navy-900);padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;font:600 13px/16px var(--font-text);text-align:center}
+.qrs .q{width:100%;aspect-ratio:1;display:grid;place-items:center}
+.qrs .q img,.qrs .q canvas{width:100%!important;height:auto!important}
+
+
+
+/* ===== Логотип «Меридиан» и Севи ===== */
+.logo .wm{font:900 52px/52px var(--font-display);color:#fff;letter-spacing:.01em;margin-top:2px}
+.logo .tl,.logo-memo .tl{font:600 15px/18px var(--font-text);color:#fff;letter-spacing:.02em}
+.logo .tl b,.logo-memo .tl b{color:var(--amber-500);font-weight:600;padding:0 .2em}
+.logo-sm .wm{font:900 20px/20px var(--font-display);color:#fff}
+.logo-memo{display:flex;flex-direction:column;gap:6px}
+.logo-memo .wm{font:900 30px/30px var(--font-display);color:var(--navy-900)}
+.logo-memo .tl{color:var(--navy-900);font-size:13px}
+.sevi-img{display:block;height:auto;margin:0 auto;filter:drop-shadow(0 14px 26px rgba(3,6,44,.5))}
+
+/* ===== Скругления (заменяют срезы 45°) ===== */
+.cut,.cut-l,.cut2,.btn,.chip-count,.iconlink,.badge,.tag,.msg,.notice,.sevi-av,.field textarea,.dock-in,.sk,.legend i,.bars i,.msg .mark-sq,.node,.node-wrap.halo::before,.cam{clip-path:none!important}
+.cut::after,.cut-l::after,.cut2::after,.btn::after,.badge::after{display:none!important}
+.cut,.cut-l{border-radius:22px}
+.cut2{border-radius:16px}
+.memo{border-radius:28px}
+.btn{border-radius:16px}
+.dock-in{border-radius:22px}
+.dock .btn{border-radius:14px}
+.chip-count{border-radius:999px;padding:9px 14px}
+.iconlink{border-radius:14px}
+.badge{border-radius:14px}
+.tag{border-radius:999px}
+.msg{border-radius:16px}
+.notice{border-radius:14px}
+.sevi-av{border-radius:12px}
+.field textarea{border-radius:14px}
+.sk{border-radius:8px}
+.legend i{border-radius:50%}
+.bars i{border-radius:4px}
+.msg .mark-sq{border-radius:50%}
+.node{border-radius:50%}
+.node.ahead{background:transparent;box-shadow:inset 0 0 0 2px rgba(255,255,255,.65)}
+.node-wrap.halo::before{border-radius:50%}
+.cam{border-radius:22px}
+.photo-card{border-radius:22px}
+.mascot{border:1.5px dashed rgba(244,248,255,.45);border-radius:28px;background:rgba(9,19,61,.35)}
+.mascot svg.frame{display:none}
+.idx a{border-radius:16px}
+.demo-grid button{border-radius:14px}
+.mapcard{border-radius:22px}
+.qrs figure{border-radius:16px}
+.review{border-radius:0}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important}
+  .screen-in{animation:fade .12s linear both!important}
+}
+@keyframes fade{from{opacity:0}}
+.calm .screen-in{animation:fade .12s linear both}
+.calm .ico.pop{animation:none}
+@media (max-width:359px){.dock .btn-glass span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.dock .btn-glass{padding:0 14px}.counter{font-size:56px;line-height:56px}.h1{font-size:28px;line-height:30px}}
+@media (min-width:700px){.app{padding-top:48px}.review{margin-top:-48px}}
+</style>
+</head>
+<body>
+<div class="sub" aria-hidden="true">
+  <img class="photo" id="photo" alt="" hidden>
+  <div class="scrim ambient" id="scrim"></div>
+  <div class="pat waves-top off" id="patTop"></div>
+  <div class="pat rings off" id="patRings"></div>
+  <div class="pat waves" id="patWaves"></div>
+</div>
+<main class="app" id="app" tabindex="-1"></main>
+<div class="dock" id="dock" hidden></div>
+<div class="sr" aria-live="polite" id="live"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script>
+"use strict";
+/* ---------- Иконки интерфейса ---------- */
+const I={
+ right:'<path d="M4 12h15M13 6l6 6-6 6"/>',
+ left:'<path d="M20 12H5M11 6l-6 6 6 6"/>',
+ qr:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h3v3h-3zM18 18h2v2h-2zM14 20h3M20 14v2"/>',
+ coll:'<path d="M4 8h12v12H4zM8 4h12v12"/>',
+ alert:'<path d="M12 3L2 20h20L12 3zM12 10v4M12 17v.5"/>',
+ wifioff:'<path d="M3 3l18 18M2 8.5a16 16 0 0 1 4.5-2.7M10.6 5.1A16 16 0 0 1 22 8.5M5 12a11 11 0 0 1 3.2-2M15.5 9.6A11 11 0 0 1 19 12M8.5 15.5a5 5 0 0 1 6.5-.4M12 19v.5"/>',
+ retry:'<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v6h-6"/>',
+ cam:'<path d="M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>',
+ hint:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/>',
+ wind:'<path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
+ book:'<path d="M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3zM21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z"/>',
+ route:'<path d="M3 17h4v4H3zM17 3h4v4h-4zM7 19c5 0 4-7 7-7s3-5 3-5"/>',
+ map:'<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/>',
+ user:'<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1-4 4-6 8-6s7 2 8 6"/>'
+};
+const ic=(n,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">${I[n]}</svg>`;
+
+/* ---------- Контент маршрута (спецификация экранов, ред. 2 от 08.11.2026) ---------- */
+const POINTS=[
+{id:1,model:'Святые ворота',proto:'Ворота-арка Соловецкого монастыря.',zone:'КПП «Восток»',
+ title:'Вход с двух берегов',
+ act:'Посмотри на арку как на начало пути, а не как на «древний портал».',
+ here:['Перед тобой современный вход в Новый Херсонес. Через КПП «Восток» люди попадают в музейный комплекс рядом с древним городом; это не сохранившиеся ворота античного Херсонеса.'],
+ there:['Севи ставит здесь модель Святых ворот Соловецкого монастыря. Их название встречается в описи 1582 года, хотя монашеская жизнь на островах началась раньше — в XV веке.'],
+ sevi:'Два порога принадлежат разным эпохам. Они напоминают Севи: прежде чем войти в чужую историю, узнай, где ты находишься и что здесь было на самом деле.',
+ rec:'слушать историю с уважением.',
+ riddle:'Следующее место находится за музеем, посвящённым Античности и Византии. Там под открытым небом можно увидеть следы древнего города и погребальные сооружения. Как называется этот парк?',
+ hint:'Здесь исследуют древние постройки; ищи вход к нему за Музеем Античности и Византии.',
+ answer:'Археологический парк.',
+ go:'Иди к подходу к Археологическому парку за Музеем Античности и Византии. На мощёной дорожке перед парком ищи лабиринт, модель № 2.'},
+{id:2,model:'Каменный лабиринт',proto:'Рельеф лабиринта Большого Заяцкого острова в форме медальона.',zone:'Подход к Археологическому парку',
+ title:'Что рассказывает древний камень',
+ act:'Проследи взглядом каменную дорожку; не приписывай сооружению доказанного назначения.',
+ here:['В Археологическом парке Нового Херсонеса открыты древние погребальные сооружения, в том числе героон. Их исследуют по постройкам и находкам.','Херсонес оставил и письменный голос — стелу с гражданской присягой: её текст позволяет узнать об обязательствах жителей перед городом.'],
+ there:['Соловецкие каменные лабиринты гораздо старше монастыря, но их назначение остаётся гипотезой.'],
+ sevi:'Севи хотел услышать от всех камней готовый ответ. Здесь он учится различать прочитанное свидетельство, вывод исследователя и вопрос без окончательного ответа.',
+ rec:'честно говорить о том, что известно и неизвестно.',
+ riddle:'Следующее место показывает не раскопки, а современное воссоздание жилых дворов и труда мастеров Херсонеса. В каком квартале искать лодку с рыбой?',
+ hint:'Там находятся Ремесленные мастерские и Усадьба винодела.',
+ answer:'Византийский квартал.',
+ go:'Иди в Византийский квартал. У подхода к Ремесленным мастерским ищи лодку с рыбой, модель № 3.'},
+{id:3,model:'Лодка с рыбой',proto:'Лодка с уловом; образ морского промысла, а не копия конкретного судна.',zone:'Византийский квартал · мастерские',
+ title:'Город у моря живёт трудом',
+ act:'Увидь в модели людей и хозяйственную работу, а не только морское путешествие.',
+ here:['Византийский квартал — современная реконструкция городской среды. Она помогает представить жилые дворы и работу мастеров.','В древнем Херсонесе изготавливали в том числе рыболовные снасти и керамику; море служило дорогой для торговли.'],
+ there:['На Соловках монастырское хозяйство тоже зависело от моря: в XVI веке устроили Филипповские садки, искусственную заводь для рыболовства.'],
+ sevi:'Между этими местами нет одного общего промысла. Севи видит другое сходство: за шумом волн на каждом берегу стояла работа людей.',
+ rec:'замечать труд за привычным видом берега.',
+ riddle:'Не выходя из квартала, найди двор, название которого связано с превращением винограда в напиток. Там ждёт северный плод. Что это за место?',
+ hint:'Здесь воссоздана древняя винодельня.',
+ answer:'Усадьба винодела.',
+ go:'Найди Усадьбу винодела в Византийском квартале. Рядом с её внешним подходом ищи модель дыни и тепличной рамы № 4.'},
+{id:4,model:'Северный плод',proto:'Дыня и часть тепличной рамы — образ сада Макарьевской пустыни.',zone:'Усадьба винодела',
+ title:'Как люди меняли условия земли',
+ act:'Сопоставь два разных способа выращивать растения — на севере и на юге.',
+ here:['Перед тобой реконструкция винодельни Херсонеса II–IV веков. В сельской округе полиса, которую называли хорой, жители и раньше приспосабливали каменистые участки под виноградники.'],
+ there:['Севи достаёт северный плод: в XIX веке в Макарьевской пустыни на Соловках горячая вода от воскобелильной мастерской согревала почву парников, где выращивали дыни и арбузы.'],
+ sevi:'Южные виноградники и северные парники не были одинаковыми. В обоих случаях люди наблюдали за местом, искали решение и долго ухаживали за тем, что посадили.',
+ rec:'забота требует знаний и повторяющегося труда.',
+ riddle:'Следующая история записана не на бумаге. Ищи музей, чей фасад рассказывает о прошлом Крыма в каменных рельефах. Перед ним — модель камня памяти. Как называется музей?',
+ hint:'В его названии — Крым и Новороссия.',
+ answer:'Музей Крыма и Новороссии.',
+ go:'Иди к открытому пространству перед главным фасадом Музея Крыма и Новороссии. Там ищи камень памяти, модель № 5.'},
+{id:5,model:'Камень памяти',proto:'Условный фрагмент валунной стены со следами обстрела. Это художественная модель, не слепок исторического камня.',zone:'Музей Крыма и Новороссии',calm:true,
+ title:'Два берега в одной войне',
+ act:'Рассмотри фасад музея как современный рассказ об истории региона; модель — не подлинный след обстрела.',
+ here:['Фасад Музея Крыма и Новороссии рассказывает о событиях региона, среди его сюжетов — оборона Севастополя.'],
+ there:['Севи останавливается у камня и открывает страницу Крымской войны. В 1854 году британские корабли обстреляли Соловецкий монастырь. В том же году началась оборона Севастополя, продолжавшаяся до 1855 года.'],
+ sevi:'Это не одно сражение, а разные события одной войны у двух морей. Здесь Севи не предлагает угадывать потери или победителя: он просит помнить людей, которых затронули эти события.',
+ rec:'помнить тяжёлую историю бережно.',
+ riddle:'После этой истории ищи переход, где Новый Херсонес встречается с древним городищем. У какого КПП стоит последняя модель — световой ориентир Соловков?',
+ hint:'Этот вход соединён с главным входом в музей-заповедник «Херсонес Таврический».',
+ answer:'КПП «Север».',
+ go:'Иди к КПП «Север» со стороны Нового Херсонеса. До прохода, на доступной дорожке, ищи храм-маяк, модель № 6. Переходить в древнее городище не нужно.'},
+{id:6,model:'Храм-маяк',proto:'Миниатюра храма-маяка на Секирной горе.',zone:'Подход к КПП «Север»',
+ title:'Свет и звон у двух морей',
+ act:'Сравни два способа предупреждать и направлять моряков: свет маяка и звук колокола.',
+ here:['За КПП «Север» начинается путь в древний Херсонес. Там, у берега Чёрного моря, находится знаменитый Туманный колокол; после возвращения из Франции в 1913 году его звон использовали как предупреждение для судов в плохую видимость.'],
+ there:['На Соловках храм Вознесения Господня на Секирной горе служит маяком.'],
+ sevi:'Севи видит: на разных берегах люди нашли разные способы помочь тем, кто ещё в море. Последняя точка отвечает на его вопрос — историю сохраняют, когда делятся знанием и указывают путь другим.',
+ rec:'передавать знание дальше.',
+ go:'Все шесть записей собраны. Открой итог. Если захочешь, позже продолжи знакомство с древним Херсонесом — это уже отдельная прогулка.'}
+];
+const P_=id=>POINTS.find(p=>p.id===id);
+const SEVI_LINE='Истории двух морей живут, когда мы честно узнаём прошлое каждого берега и передаём его дальше — с уважением к людям, их труду и памяти.';
+
+const pad2=n=>String(n).padStart(2,'0');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Состояние: прогресс живёт только в этом браузере ---------- */
+const KEY='dva-morya-sevi-v1';
+const blank=()=>({opened:[],line:'',finished:false,rev:{},started:false});
+let S=blank();
+try{const raw=localStorage.getItem(KEY);if(raw)S=Object.assign(blank(),JSON.parse(raw));}catch(e){}
+let PREVIEW=null;
+const st=()=>PREVIEW||S;
+function save(){if(PREVIEW)return;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const count=()=>st().opened.length;
+const isOpen=id=>st().opened.includes(id);
+const nextId=()=>{for(const p of POINTS)if(!isOpen(p.id))return p.id;return null;};
+let flash=null, justOpened=null, booted=false;
+
+/* ---------- Иконки моделей: обычная / активная ---------- */
+const ico=(id,on,cls='')=>`<img class="ico ${cls}" src="img/icon-${id}${on?'-on':''}.png" alt="" width="64" height="64">`;
+
+/* ---------- Логотип ---------- */
+const logoBig=()=>`<a class="logo" href="#start" aria-label="Меридиан. Херсонес × Соловки"><img class="em" src="img/logo-emblem.png" alt=""><span class="wm" aria-hidden="true">Меридиан</span><span class="tl" aria-hidden="true">Херсонес <b>×</b> Соловки</span></a>`;
+const logoSm=()=>`<a class="logo-sm" href="#start" aria-label="Меридиан, на старт"><img class="em" src="img/logo-emblem.png" alt=""><span class="wm">Меридиан</span></a>`;
+const sevi=(pose,alt,w=260)=>`<img class="sevi-img" src="img/sevi/${pose}.png" alt="${alt}" style="width:min(72%,${w}px)">`;
+const mascot=()=>sevi('happy','Севи — маскот маршрута',280);
+
+/* ---------- Карта маршрута (схема Нового Херсонеса в палитре бренда) ---------- */
+const NODES={1:[650,1128],2:[110,883],3:[305,1028],4:[440,1025],5:[368,1300],6:[478,552]};
+const SEG={1:'M650 1128C600 990 300 830 110 883',2:'M110 883C110 960 220 1045 305 1028',3:'M305 1028C350 1005 400 1000 440 1025',4:'M440 1025C485 1110 430 1250 368 1300',5:'M368 1300C420 1180 590 1080 615 900S520 640 478 552'};
+const PLATE={1:[430,1158],2:[140,846],3:[56,1064],4:[468,940],5:[396,1268],6:[150,508]};
+function mapSVG(){
+  const nx=nextId();
+  const w=p=>Math.round(76+Math.max(p.model.length*12.6,p.zone.length*8.9)+18);
+  let segs='';for(let i=1;i<=5;i++){const on=isOpen(i)&&isOpen(i+1);segs+=`<path d="${SEG[i]}" fill="none" stroke="${on?'#D3873C':'#09133D'}" stroke-width="${on?5:3.5}" ${on?'':'stroke-dasharray="10 9"'} stroke-linecap="square"/>`;}
+  let plates='',nodes='';
+  for(const p of POINTS){
+    const [x,y]=PLATE[p.id],W=w(p),on=isOpen(p.id);
+    if(p.id===6||p.id===3) PLATE[p.id][0]=x; // фиксированные позиции
+    plates+=`<g><rect x="${x}" y="${y}" width="${W}" height="72" rx="18" fill="#F4F8FF" stroke="#A8BAE7" stroke-width="1.5"/><image href="img/icon-${p.id}${on?'-on':''}.png" x="${x+10}" y="${y+10}" width="52" height="52"/><text x="${x+72}" y="${y+33}" font-family="Inter,sans-serif" font-weight="600" font-size="23" fill="#09133D">${p.model}</text><text x="${x+72}" y="${y+56}" font-family="Inter,sans-serif" font-size="16" fill="#55585F">${esc(p.zone)}</text></g>`;
+    const [cx,cy]=NODES[p.id];const st=on?'done':p.id===nx?'next':'ahead';
+    const fill=st==='done'?'#D3873C':st==='next'?'#F4F8FF':'#09133D', col=st==='ahead'?'#FFFFFF':'#03062C';
+    const s=26,c=9;
+    nodes+=`<g>${st==='next'?`<circle cx="${cx}" cy="${cy}" r="42" fill="#D3873C" opacity=".25"/>`:''}${p.id===6?`<circle cx="${cx}" cy="${cy}" r="38" fill="none" stroke="#D3873C" stroke-width="3"/>`:''}<circle cx="${cx}" cy="${cy}" r="${s}" fill="${fill}" stroke="${st==='next'?'#09133D':'none'}" stroke-width="2"/><text x="${cx}" y="${cy+9}" text-anchor="middle" font-family="Tektur,sans-serif" font-weight="700" font-size="26" fill="${col}">${p.id}</text></g>`;
+  }
+  return `<svg class="map" viewBox="0 380 733 1005" role="img" aria-label="Карта маршрута Севи по Новому Херсонесу: шесть точек от КПП «Восток» до КПП «Север»">
+<defs>
+<pattern id="mw" width="60" height="22" patternUnits="userSpaceOnUse"><path d="M0 11C8 4 22 4 30 11S52 18 60 11" fill="none" stroke="#F4F8FF" stroke-width="1.6" opacity=".7"/></pattern>
+<pattern id="md" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><rect x="0" y="9" width="9" height="4" fill="#A8BAE7"/></pattern>
+</defs>
+<rect x="0" y="380" width="733" height="1005" fill="#E3EBFF"/>
+<path d="M0 1050L330 545L415 400L733 640V1385H0Z" fill="#F4F8FF" stroke="#CAD7F9" stroke-width="2"/>
+<path d="M60 560L300 548L170 760L40 980L22 930C48 830 72 700 60 560Z" fill="url(#md)" opacity=".9"/>
+<path d="M0 380H42C72 520 78 650 44 770C24 850 10 910 0 950Z" fill="#324377"/><path d="M0 380H42C72 520 78 650 44 770C24 850 10 910 0 950Z" fill="url(#mw)"/>
+<path d="M520 498L733 646" stroke="#FFFFFF" stroke-width="26"/><path d="M520 498L733 646" stroke="#CAD7F9" stroke-width="30" opacity=".5" fill="none"/>
+<path d="M450 1385C470 1300 520 1240 733 1040" stroke="#CAD7F9" stroke-width="30" fill="none" opacity=".55"/><path d="M450 1385C470 1300 520 1240 733 1040" stroke="#FFFFFF" stroke-width="22" fill="none"/>
+<g fill="#CAD7F9"><path d="M380 800L540 590L665 690L510 890Z"/><path d="M292 930L352 925L357 1068L296 1072Z"/><path d="M360 1000L432 1010L420 1092L355 1085Z"/><path d="M425 935L470 945L455 990L418 982Z"/><path d="M350 1178L410 1186L398 1385H330Z"/><path d="M40 420L150 470L120 520L15 470Z"/><path d="M200 395L270 420L245 470L180 445Z"/></g>
+<ellipse cx="228" cy="870" rx="18" ry="110" transform="rotate(25 228 870)" fill="#E3EBFF" stroke="#8397CB" stroke-width="2"/>
+<path d="M175 1170A110 110 0 0 0 175 1390" stroke="#CAD7F9" stroke-width="28" fill="none"/><path d="M175 1205A75 75 0 0 0 175 1385" stroke="#CAD7F9" stroke-width="8" fill="none"/>
+<g font-family="Inter,sans-serif" fill="#586CA4" font-size="18"><text x="22" y="700" transform="rotate(-90 22 700)" fill="#F4F8FF" font-weight="600" letter-spacing="3">ЧЁРНОЕ МОРЕ</text><text x="250" y="402">Мужской монастырь</text><text x="470" y="770" text-anchor="middle" transform="rotate(-38 470 770)" font-weight="600" fill="#324377">Музей античности и Византии</text><text x="92" y="640" font-weight="600" fill="#324377">Археологический</text><text x="92" y="662" font-weight="600" fill="#324377">парк</text><text x="268" y="1158" font-weight="600" fill="#324377">Византийский квартал</text><text x="108" y="1365">Амфитеатр</text><text x="508" y="476" font-weight="600" fill="#09133D">КПП «Север»</text><text x="676" y="1222" text-anchor="end" font-weight="600" fill="#09133D"></text></g>
+<rect x="470" y="489" width="16" height="16" rx="4" fill="none" stroke="#09133D" stroke-width="2.5"/>
+${segs}${nodes}${plates}
+<g transform="translate(676 1330)"><circle r="30" fill="#F4F8FF" stroke="#324377" stroke-width="2"/><polygon points="0,-22 7,4 0,0 -7,4" fill="#D3873C"/><text y="20" text-anchor="middle" font-family="Tektur,sans-serif" font-weight="700" font-size="14" fill="#324377">С</text></g>
+</svg>`;
+}
+const legend=()=>`<div class="legend"><span><i style="background:var(--amber-500)"></i>открыта</span><span><i style="background:var(--fog);box-shadow:inset 0 0 0 2px var(--navy-900)"></i>следующая</span><span><i style="background:var(--navy-900)"></i>впереди</span></div>`;
+
+/* ---------- Роутер ---------- */
+const app=document.getElementById('app'),dock=document.getElementById('dock'),scrim=document.getElementById('scrim'),photo=document.getElementById('photo');
+function go(name){if(location.hash==='#'+name)render();else location.hash=name;}
+window.addEventListener('hashchange',render);
+window.addEventListener('offline',()=>{if(['','start','route','scan','return'].includes(cur()))render();});
+function cur(){return (location.hash||'').slice(1);}
+function setBg(v){
+  scrim.className='scrim '+(v.scrim||'focus');
+  if(v.bg){const src='img/photo/'+v.bg+'.jpg';if(photo.getAttribute('src')!==src)photo.src=src;photo.hidden=false;}else{photo.hidden=true;}
+  document.getElementById('patRings').classList.toggle('off',!v.rings);
+  document.getElementById('patWaves').classList.toggle('off',v.waves===false);
+  document.getElementById('patTop').classList.toggle('off',!v.wavesTop);
+}
+function setDock(html){if(html){dock.innerHTML='<div class="dock-in">'+html+'</div>';dock.hidden=false;app.classList.add('has-dock');}else{dock.hidden=true;dock.innerHTML='';app.classList.remove('has-dock');}}
+function announce(t){const l=document.getElementById('live');l.textContent='';setTimeout(()=>l.textContent=t,30);}
+function reviewBar(){return PREVIEW?`<div class="review">Режим обзора · прогресс условный<a href="#screens" data-act="exit-preview">Выйти</a></div>`:'';}
+
+function render(){
+  stopCam();
+  const r=cur();
+  document.body.classList.remove('calm');
+  if(!booted){booted=true;if(!r||r==='start'){ if(S.opened.length&&!S.finished&&!sessionStorage.getItem('dm-back')){try{sessionStorage.setItem('dm-back','1')}catch(e){} return show(viewLoading,()=>go('return'));} } else return show(viewLoading,()=>render());}
+  if(!navigator.onLine&&['','start','route','scan','return'].includes(r)){return paint(viewOffline());}
+  let v;
+  if(!r||r==='start') v=viewStart();
+  else if(r==='route') v=viewRoute();
+  else if(r==='map') v=viewMap();
+  else if(/^stop-\d+$/.test(r)){const id=+r.split('-')[1]; v=P_(id)?viewStop(id):viewError();}
+  else if(r==='scan') v=viewScan();
+  else if(r==='collection') v=viewCollection();
+  else if(r==='finish') v=viewFinish();
+  else if(r==='memo') v=viewMemo();
+  else if(r==='return') v=viewReturn();
+  else if(r==='loading') v=viewLoading();
+  else if(r==='error') v=viewError();
+  else if(r==='offline') v=viewOffline();
+  else if(r==='screens') v=viewScreens();
+  else v=viewError();
+  paint(v);
+}
+function show(viewFn,then){paint(viewFn());setTimeout(then,650);}
+function paint(v){
+  setBg(v);
+  if(v.calm)document.body.classList.add('calm');
+  app.innerHTML=reviewBar()+'<div class="screen screen-in">'+v.html+'</div>';
+  setDock(v.dock||'');
+  window.scrollTo(0,0);
+  if(v.after)v.after();
+  if(v.say)announce(v.say);
+  const h=app.querySelector('h1');if(h){h.setAttribute('tabindex','-1');h.focus({preventScroll:true});}
+}
+
+/* ---------- Общие куски ---------- */
+const btn=(label,{kind='primary',href,act,icon,iconL,data=''}={})=>{
+  const inner=(iconL?ic(iconL):'')+`<span>${label}</span>`+(icon?ic(icon):'');
+  const cls='btn btn-'+kind;
+  return href?`<a class="${cls}" href="#${href}" ${data}>${inner}</a>`:`<button type="button" class="${cls}" data-act="${act||''}" ${data}>${inner}</button>`;
+};
+const link=(label,href,icon='right')=>`<a class="link" href="#${href}">${label}${icon?ic(icon):''}</a>`;
+const bars=()=>`<div class="bars" aria-hidden="true">${POINTS.map(p=>`<i class="${isOpen(p.id)?'on':''}"></i>`).join('')}</div>`;
+const progressLine=()=>`Записей открыто: ${count()} из 6`;
+const progress=()=>`<div class="progress"><div class="counter" aria-hidden="true">${count()}/6</div><div class="grow">${bars()}<div class="cap muted">${progressLine()}</div></div></div>`;
+const topbar=(left)=>`<div class="top">${left}<div class="grow"></div><span class="glass chip-count" aria-label="${progressLine()}">${count()}/6</span><a class="glass iconlink" href="#collection" aria-label="Моя коллекция">${ic('coll')}</a></div>`;
+const backTo=(href,label)=>`<a class="back" href="#${href}">${ic('left')}${label}</a>`;
+const msg=(html,{kind='panel',mark=true,calm=false,icon}={})=>`<div class="msg ${kind} ${calm?'calm':''}" role="status">${icon?`<span class="ic">${icon}</span>`:(mark?'<span class="mark-sq" aria-hidden="true"></span>':'')}<div class="body">${html}</div></div>`;
+const dockRoute=()=>btn('Сканировать QR',{href:'scan',iconL:'qr'})+`<a class="btn btn-glass" href="#collection" aria-label="Моя коллекция">${ic('coll')}<span>Коллекция</span></a>`;
+
+/* ---------- 01 Вход ---------- */
+function viewStart(){
+  const n=count();
+  return {bg:'start',scrim:'ambient',rings:true,html:`
+  ${logoBig()}
+  ${mascot()}
+  <h1 class="h1">Севи и шесть историй двух морей</h1>
+  <section class="glass cut pad stack-16">
+    <div class="sevi"><span class="sevi-av">${ic('wind')}</span><span class="label">севи</span></div>
+    <p class="story">Привет, я Севи. Я привёз образы шести соловецких мест в Новый Херсонес. Здесь у каждого северного сюжета найдётся история южного берега — своя, не похожая на него. Иди от модели к модели, читай обе истории и помоги мне понять, как люди сохраняют память о месте.</p>
+  </section>
+  <section aria-label="Шесть моделей маршрута">
+    <div class="strip">${POINTS.map(p=>ico(p.id,isOpen(p.id))).join('')}</div>
+    <div class="strip-cap" aria-hidden="true">${POINTS.map(p=>`<span>${pad2(p.id)}</span>`).join('')}</div>
+  </section>
+  <section class="panel cut pad stack">
+    <span class="label">с чего начать</span>
+    <p class="body">Начни у КПП «Восток», сразу после входа. Найди модель Святых ворот с номером 1. Следующая загадка назовёт место Нового Херсонеса, где стоит модель № 2.</p>
+  </section>
+  <div class="stack-16">
+    <div class="cap muted">${progressLine()}</div>
+    ${btn(n?'Продолжить маршрут':'Начать маршрут',{href:'route',icon:'right'})}
+    <a class="cap muted" href="#screens" style="align-self:center;padding:12px">Обзор всех экранов</a>
+  </div>`};
+}
+
+/* ---------- 02 Активный маршрут ---------- */
+function viewRoute(){
+  const nx=nextId();
+  const goal=nx?(()=>{const p=P_(nx);return `<section class="glass cut pad"><div class="row" style="align-items:flex-start;gap:16px"><div class="grow stack"><span class="label">следующая точка</span><h2 class="h2">№ ${p.id} · ${p.model}</h2><p class="body">Ищи её в зоне «${p.zone}».</p></div>${ico(p.id,false)}</div></section>`;})()
+    :`<section class="glass cut pad stack"><span class="label">маршрут пройден</span><h2 class="h2">Все шесть записей собраны</h2>${link('Открыть итог','finish')}</section>`;
+  const items=POINTS.map(p=>{
+    const done=isOpen(p.id),isNext=p.id===nx;
+    const cls=done?'done':isNext?'next':'ahead';
+    const status=done?'открыта':isNext?'следующая':'впереди';
+    const passed=done&&isOpen(p.id+1);
+    const title=done?`<a class="r-title" href="#stop-${p.id}">${pad2(p.id)} · ${p.model}</a>`:`<span class="r-title">${pad2(p.id)} · ${p.model}</span>`;
+    return `<li class="${passed?'passed':''} ${justOpened===p.id+1?'grow-line':''}"><span class="node-wrap ${isNext?'halo':''}"><span class="node ${cls}"></span></span><div>${title}<div class="r-zone">${p.zone}</div></div><span class="r-status ${cls}">${status}</span></li>`;
+  }).join('');
+  justOpened=null;
+  return {bg:'route',scrim:'focus',html:`
+  ${topbar(logoSm())}
+  <header class="stack" style="gap:8px"><h1 class="h1">Маршрут Севи</h1><p class="sub-h muted">Шесть историй двух морей</p></header>
+  ${progress()}
+  ${goal}
+  <section class="panel cut mapcard" aria-label="Карта маршрута">
+    <a href="#map" aria-label="Открыть карту крупно">${mapSVG()}</a>
+    <div class="foot">${legend()}${link('Крупно','map','')}</div>
+  </section>
+  <p class="body muted">Найди модель на площадке и сканируй QR-код на подставке. Если уже открыл историю, её можно перечитать в коллекции.</p>
+  <section class="stack-16" aria-label="Точки маршрута"><span class="label">точки маршрута</span><ol class="route">${items}</ol></section>`,
+  dock:dockRoute(),say:'Маршрут Севи. '+progressLine()};
+}
+function viewMap(){
+  return {bg:'route',scrim:'reading',waves:false,html:`
+  ${topbar(backTo('route','К маршруту'))}
+  <header class="stack" style="gap:8px"><span class="label">карта маршрута · новый херсонес</span><h1 class="h1">Шесть точек Севи</h1><p class="body muted">Сдвигай карту пальцем. Точное место модели — на подставке с номером.</p></header>
+  <div class="mapwrap" id="mapwrap">${mapSVG()}</div>
+  <div class="legend">${legend().replace('<div class="legend">','').replace(/<\/div>$/,'')}</div>`,
+  dock:dockRoute(),after:()=>{const w=document.getElementById('mapwrap');const nx=nextId()||6;w.scrollLeft=Math.max(0,NODES[nx][0]-w.clientWidth/2);}};
+}
+
+/* ---------- 03 Открытая остановка ---------- */
+function viewStop(id){
+  const p=P_(id);
+  if(!isOpen(id)) return viewLocked(p);
+  const s=st(); const rv=s.rev[id]||{};
+  const nxt=P_(id+1);
+  const f=flash&&flash.id===id?flash:null; flash=null;
+  const toast=f?(f.kind==='first'
+      ? msg(p.calm?`<b>История прочитана.</b> Прогресс: ${count()} из 6.`:`<b>Запись открыта.</b> Прогресс: ${count()} из 6.`,{calm:p.calm})
+      : f.kind==='repeat'? msg('Ты уже открыл эту историю. Прочти её ещё раз — прогресс не изменится.',{mark:false,icon:ic('book')})
+      : msg(`Ты нашёл точку № ${id} раньше подсказки. Её история открыта. Рекомендуемый порядок показан в маршруте.`)):'';
+  const riddle=p.riddle?`
+  <section class="glass cut pad stack-16" id="riddle">
+    <span class="label">загадка</span>
+    <p class="story">${p.riddle}</p>
+    ${rv.hint||rv.answer?`<div class="notice"><b>Подсказка.</b> ${p.hint}</div>`:btn('Показать подсказку',{kind:'glass',act:'hint',iconL:'hint',data:`data-id="${id}"`})}
+    ${rv.answer?'':btn('Показать ответ и следующую точку',{kind:'glass',act:'answer',data:`data-id="${id}"`})}
+  </section>`:'';
+  const after=(rv.answer||!p.riddle)?`
+  <section class="reveal" id="next">
+    ${p.riddle?`<div class="panel cut pad stack"><span class="label">ответ</span><p class="h2" style="color:var(--navy-900)">${p.answer}</p></div>`:''}
+    <div class="glass cut pad stack-16">
+      ${nxt?`<div class="next-card"><div class="grow stack"><span class="label">дальше · ${nxt.zone}</span><p class="h2">№ ${nxt.id} · ${nxt.model}</p></div>${ico(nxt.id,isOpen(nxt.id))}</div>`:`<span class="label">маршрут завершён</span>`}
+      <p class="body">${p.go}</p>
+      ${nxt?btn('Продолжить маршрут',{href:'route',icon:'right'}):btn('Открыть итог',{href:'finish',icon:'right'})}
+    </div>
+  </section>`:'';
+  const firstOpen=f&&f.kind==='first'&&!p.calm;
+  return {bg:'p'+id,scrim:'reading',calm:p.calm,html:`
+  ${topbar(backTo('route','К маршруту'))}
+  ${toast}
+  <header class="stack" style="gap:6px"><span class="label">точка ${pad2(id)} · ${p.zone}</span><h1 class="h1">${p.title}</h1></header>
+  <section class="glass cut photo-card"><div class="ph" style="background-image:url(img/photo/p${id}.jpg)" role="img" aria-label="Фото: ${p.model}, Соловки"></div><div class="model">${ico(id,true,'big '+(firstOpen?'pop':''))}<div class="grow stack" style="gap:8px"><p class="r-title" style="font-size:20px;line-height:24px">${p.model}</p><p class="cap muted">${p.proto}</p><div class="tags"><span class="tag edit">Современная модель</span></div></div></div></section>
+  <section class="panel cut pad stack-16" aria-label="История Нового Херсонеса">
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><span class="label">этот берег · новый херсонес</span><span class="tag fact">Историческая справка</span></div>
+    <div class="story">${p.here.map(t=>`<p>${t}</p>`).join('')}</div>
+    <div class="notice"><b>Заметь.</b> ${p.act}</div>
+  </section>
+  <section class="glass cut-l pad stack-16" aria-label="История Соловков" style="padding-left:28px">
+    <span class="label">другой берег · соловки</span>
+    <div class="story">${p.there.map(t=>`<p>${t}</p>`).join('')}</div>
+  </section>
+  <section class="panel cut pad stack-16" aria-label="Связь двух берегов">
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><div class="sevi"><span class="sevi-av">${ic('wind')}</span><span class="label">севи связывает берега</span></div></div>
+    <p class="story">${p.sevi}</p>
+    <p class="src">Тексты сверяются с площадкой и профильными специалистами перед публикацией.</p>
+  </section>
+  <section class="record glass cut" aria-label="Строка коллекции"><div class="badge ${firstOpen?'collect':'done'}" aria-hidden="true">${pad2(id)}</div><div><span class="label">запись ${id} в коллекции</span><p class="body" style="margin-top:4px">${p.rec.charAt(0).toUpperCase()+p.rec.slice(1)}</p></div></section>
+  ${riddle}
+  ${after}
+  <div>${link('Моя коллекция','collection')}</div>`,
+  say:p.title};
+}
+function viewLocked(p){
+  return {bg:'route',scrim:'focus',html:`
+  ${topbar(backTo('route','К маршруту'))}
+  <header class="model"><div class="badge closed" aria-hidden="true">${pad2(p.id)}</div><div class="grow stack" style="gap:6px"><span class="label">точка ${pad2(p.id)} · ${p.zone}</span><h1 class="h1">${p.model}</h1></div></header>
+  ${sevi('surprised','Севи ждёт',230)}
+  <section class="glass cut pad stack-16"><div class="model">${ico(p.id,false,'big dim')}<p class="body grow">История этой точки откроется, когда ты сканируешь QR-код на подставке модели.</p></div>
+  <p class="body muted">Ищи модель № ${p.id} в зоне «${p.zone}».</p></section>`,
+  dock:btn('Сканировать QR',{href:'scan',iconL:'qr'})};
+}
+
+/* ---------- 04 / 07 / 08 Коллекция ---------- */
+function viewCollection(){
+  const n=count();
+  const list=`<div class="cards">${POINTS.map(p=>isOpen(p.id)
+    ?`<a class="ccard panel cut" href="#stop-${p.id}">${ico(p.id,true)}<div class="grow"><p class="h">${pad2(p.id)} · ${p.model}</p><p class="t body">Запись ${p.id}: ${p.rec}</p></div></a>`
+    :`<div class="ccard glass cut">${ico(p.id,false,'dim')}<div class="grow"><p class="h">${pad2(p.id)} · ${p.model}</p><p class="t body muted">История пока не открыта</p></div></div>`).join('')}</div>`;
+  const base={bg:'collection',scrim:'focus'};
+  if(n===0) return {...base,html:`
+    ${topbar(backTo('route','К маршруту'))}
+    ${sevi('question','Севи задумался',200)}
+    <header class="stack" style="gap:8px"><span class="label">коллекция историй · 0 из 6</span><h1 class="h1">Пока нет открытых историй</h1></header>
+    <p class="story">Начни у КПП «Восток». Найди модель Святых ворот № 1 и сканируй код на подставке — первая запись появится здесь.</p>
+    ${list}`,
+    dock:btn('К первой точке',{href:'route',icon:'right'})};
+  if(n===6) return {...base,rings:true,html:`
+    ${topbar(backTo('route','К маршруту'))}
+    ${sevi('star','Севи обнимает звезду',230)}
+    <header class="stack" style="gap:8px"><span class="label">коллекция историй</span><h1 class="h1">Все шесть историй собраны</h1></header>
+    ${progress()}
+    <p class="story">Ты можешь перечитать любую запись или открыть итог маршрута.</p>
+    ${list}`,
+    dock:btn('Открыть итог',{href:'finish',icon:'right'})+`<a class="btn btn-glass" href="#stop-1">${ic('book')}<span>Перечитать</span></a>`};
+  return {...base,html:`
+    ${topbar(backTo('route','К маршруту'))}
+    <header class="stack" style="gap:8px"><h1 class="h1">Коллекция историй</h1></header>
+    ${progress()}
+    <p class="body muted">Здесь хранятся истории, которые ты открыл у моделей. Выбери запись, чтобы перечитать её.</p>
+    ${list}`,
+    dock:btn('Продолжить маршрут',{href:'route',icon:'right'})+`<a class="btn btn-glass" href="#scan" aria-label="Сканировать QR">${ic('qr')}<span>QR</span></a>`};
+}
+
+/* ---------- 05 Маршрут пройден ---------- */
+function viewFinish(){
+  if(count()<6){const nx=nextId();return {bg:'route',scrim:'ambient',html:`
+    ${topbar(backTo('route','К маршруту'))}
+    <h1 class="h1">Итог откроется после шестой записи</h1>
+    ${progress()}
+    <p class="body">Не хватает ${6-count()} ${6-count()===1?'записи':'записей'}. Следующая точка: № ${nx} · ${P_(nx).model}, зона «${P_(nx).zone}».</p>`,dock:btn('К маршруту',{href:'route',icon:'right'})};}
+  const s=st();
+  return {bg:'finish',scrim:'ambient',rings:true,html:`
+  ${logoSm()}
+  ${sevi('flying','Севи летит домой')}
+  <header class="stack-16"><div class="counter" aria-hidden="true">6/6</div><h1 class="h1">Шесть историй услышаны</h1></header>
+  <div class="strip">${POINTS.map(p=>ico(p.id,true)).join('')}</div>
+  <section class="panel cut pad story">
+    <p>Севи начал путь у современного входа и прошёл через истории древнего Херсонеса и Соловков. Он увидел археологические свидетельства, ремесло, работу с землёй, память о войне и морские ориентиры.</p>
+    <p>Теперь он знает: даже тот, кто умеет слышать истории, не сохранит их один. Нужны люди, которые проверяют факты, замечают чужой труд, помнят тяжёлое и делятся узнанным.</p>
+  </section>
+  <section class="glass cut-l pad stack" style="padding-left:28px">
+    <div class="sevi"><span class="sevi-av">${ic('wind')}</span><span class="label">последняя строка севи</span></div>
+    <p class="sub-h">${SEVI_LINE}</p>
+  </section>
+  <form class="panel cut pad stack-16" id="lineform">
+    <div class="field"><label class="label" for="line">по желанию</label>
+    <p class="story" style="margin-bottom:4px">Какую из шести историй ты расскажешь другому человеку?</p>
+    <textarea id="line" name="line" maxlength="280" placeholder="Моя последняя строка…">${esc(s.line||'')}</textarea>
+    <p class="cap muted">Строка сохранится только в этом браузере и никуда не отправляется.</p></div>
+    ${s.line?`<div class="notice"><b>Сохранено.</b> Твоя строка лежит в памятке.</div>`:''}
+    <button type="submit" class="btn btn-primary"><span>Сохранить строку</span></button>
+    ${btn('Завершить без записи',{kind:'ghost-panel',act:'finish-skip'})}
+  </form>
+  <div class="row" style="justify-content:space-between;flex-wrap:wrap">${link('Перечитать истории','collection')}${link('Памятка','memo')}</div>
+  <p class="cap muted">${progressLine()}</p>`,say:'Шесть историй услышаны'};
+}
+
+/* ---------- 06 Памятка ---------- */
+function viewMemo(){
+  const s=st();
+  if(count()<6) return viewFinish();
+  return {bg:'finish',scrim:'ambient',rings:true,html:`
+  ${topbar(backTo('finish','К итогам'))}
+  <section class="panel cut memo stack-16">
+    <div class="logo-memo" aria-label="Меридиан. Херсонес × Соловки"><span class="wm">Меридиан</span><span class="tl">Херсонес <b>×</b> Соловки</span></div>
+    <span class="label">памятка о маршруте</span>
+    <h1 class="h1" style="color:var(--navy-900)">Маршрут двух морей пройден</h1>
+    <p class="sub-h" style="color:var(--navy-600)">Шесть историй Севи</p>
+    <div class="row" style="align-items:flex-end;gap:16px"><span class="counter">6/6</span><span class="cap muted" style="padding-bottom:10px">Открыто 6 из 6 записей</span></div>
+    <ol>${POINTS.map(p=>`<li>${ico(p.id,true)}${p.model}</li>`).join('')}</ol>
+    <p class="story" style="border-top:1px solid var(--navy-200);padding-top:16px">${SEVI_LINE}</p>
+    ${s.line?`<div class="notice"><b>Моя строка.</b> ${esc(s.line)}</div>`:''}
+    <p class="cap muted">Личная памятка о пройденном маршруте. Хранится только в этом браузере.</p>
+  </section>
+  ${sevi('back','Севи смотрит на север',200)}
+  <div class="row" style="justify-content:space-between;flex-wrap:wrap">${link('К итогам','finish','')}${link('Перечитать истории','collection')}</div>`};
+}
+
+/* ---------- 09 QR ---------- */
+let camStream=null,camLoop=0;
+function viewScan(){
+  return {bg:null,scrim:'camera',waves:false,html:`
+  <div class="top">${backTo('route','К маршруту')}<div class="grow"></div><span class="glass chip-count">${count()}/6</span></div>
+  <header class="stack" style="gap:8px"><h1 class="h1">Сканируй код модели</h1><p class="body muted">Наведи камеру на QR-код на подставке. Проверь номер модели рядом с кодом.</p></header>
+  <div class="cam cut2" id="cam">
+    <video id="vid" playsinline muted></video>
+    <div class="frame-qr" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"><path d="M0 24V10A10 10 0 0 1 10 0h14M76 0h14a10 10 0 0 1 10 10v14M0 76v14a10 10 0 0 0 10 10h14M76 100h14a10 10 0 0 0 10-10V76"/></svg></div>
+    <div class="cam-hint glass" id="camhint">Включаем камеру…</div>
+  </div>
+  <div id="scanmsg"></div>
+  <div class="stack">
+    <label class="btn btn-glass filebtn">${ic('cam')}<span>Сфотографировать код</span><input type="file" accept="image/*" capture="environment" id="qrfile"></label>
+    ${btn('Открыть список точек',{kind:'glass',href:'route',iconL:'route'})}
+  </div>
+  <details class="demo"><summary>Проверка макета без QR: имитировать скан</summary>
+    <div class="demo-grid">${POINTS.map(p=>`<button type="button" class="glass cut2" data-act="demo-scan" data-id="${p.id}">№ ${p.id}</button>`).join('')}<button type="button" class="glass cut2" data-act="demo-bad" style="grid-column:span 3;font-family:var(--font-text);font-weight:500;font-size:14px">Чужой код</button></div>
+  </details>`,after:startCam};
+}
+function camDenied(){
+  const c=document.getElementById('cam');if(!c)return;
+  c.innerHTML=`<div class="cam-off"><div class="stack-16" style="align-items:center"><span style="color:var(--amber-300)">${ic('cam').replace('<svg','<svg style="width:40px;height:40px"')}</span><p class="h2">Камера недоступна</p><p class="body muted">Разреши доступ в браузере или открой точку из списка маршрута. Можно также сфотографировать код.</p></div></div>`;
+}
+async function startCam(){
+  document.getElementById('qrfile').addEventListener('change',onFile);
+  const hint=document.getElementById('camhint');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){camDenied();return;}
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    if(cur()!=='scan'){stopCam();return;}
+    const v=document.getElementById('vid');v.srcObject=camStream;await v.play();
+    hint.textContent='Наведи камеру на QR-код';
+    const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+    const tick=()=>{
+      if(!camStream)return;
+      if(v.readyState>=2&&window.jsQR){cv.width=v.videoWidth;cv.height=v.videoHeight;cx.drawImage(v,0,0);const d=cx.getImageData(0,0,cv.width,cv.height);const q=jsQR(d.data,d.width,d.height,{inversionAttempts:'dontInvert'});if(q&&q.data){handleCode(q.data);return;}}
+      camLoop=requestAnimationFrame(tick);
+    };tick();
+  }catch(e){camDenied();}
+}
+function stopCam(){if(camLoop)cancelAnimationFrame(camLoop);camLoop=0;if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}}
+function onFile(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const img=new Image();img.onload=()=>{
+    const cv=document.createElement('canvas');const k=Math.min(1,1400/Math.max(img.width,img.height));cv.width=img.width*k;cv.height=img.height*k;
+    const cx=cv.getContext('2d');cx.drawImage(img,0,0,cv.width,cv.height);
+    const d=cx.getImageData(0,0,cv.width,cv.height);const q=window.jsQR?jsQR(d.data,d.width,d.height):null;
+    URL.revokeObjectURL(img.src);
+    if(q&&q.data)handleCode(q.data);else scanError('fail');
+  };img.onerror=()=>scanError('fail');img.src=URL.createObjectURL(f);e.target.value='';
+}
+function parseCode(t){const m=String(t).match(/(?:dva-?morya|dvamorya|два\s?моря)[^0-9]{0,8}([1-6])\b|#stop-([1-6])\b/i);return m?+(m[1]||m[2]):null;}
+function handleCode(t){const id=parseCode(t);if(id)registerScan(id);else scanError('unknown');}
+function scanError(kind){
+  const box=document.getElementById('scanmsg');if(!box)return;
+  box.innerHTML=kind==='fail'
+    ?msg('Код не удалось прочитать. Наведи камеру на QR ещё раз или открой точку из списка маршрута.',{icon:ic('alert'),mark:false})
+    :msg('Этот код не относится к маршруту Севи. Проверь номер модели и попробуй ещё раз.',{icon:ic('alert'),mark:false});
+  box.querySelector('.ic').style.color='var(--err-light)';
+  announce(box.textContent.trim());
+}
+function registerScan(id){
+  stopCam();
+  const s=st();const nx=nextId();
+  if(!s.opened.includes(id)){
+    s.opened.push(id);s.opened.sort((a,b)=>a-b);s.started=true;save();
+    justOpened=id;
+    flash={id,kind:(nx!==null&&id>nx)?'early':'first'};
+  } else flash={id,kind:'repeat'};
+  go('stop-'+id);
+}
+
+/* ---------- 10–13 Служебные ---------- */
+function viewReturn(){
+  const nx=nextId();
+  return {bg:'return',scrim:'ambient',rings:true,html:`
+  ${logoBig()}
+  ${sevi('surprised','Севи рад встрече',230)}
+  <h1 class="h1">С возвращением</h1>
+  <p class="story">Твой прогресс сохранён в этом браузере: ${count()} из 6.</p>
+  ${progress()}
+  ${nx?`<section class="glass cut pad"><div class="row" style="align-items:flex-start;gap:16px"><div class="grow stack"><span class="label">следующая точка</span><p class="h2">№ ${nx} · ${P_(nx).model}</p><p class="body">Зона «${P_(nx).zone}».</p></div>${ico(nx,false)}</div></section>`:''}
+  <div class="stack">${btn('Продолжить маршрут',{href:'route',icon:'right'})}${btn('Моя коллекция',{kind:'glass',href:'collection',iconL:'coll'})}</div>`};
+}
+function viewLoading(){
+  return {bg:'start',scrim:'ambient',rings:true,html:`
+  ${logoBig()}
+  ${sevi('sleep','Севи дремлет, пока маршрут загружается',240)}
+  <div class="loader" aria-hidden="true"><i></i></div>
+  <h1 class="h1">Открываем маршрут</h1>
+  <p class="story">Подожди немного: загружаем истории двух морей.</p>
+  <div class="glass cut pad stack" aria-hidden="true"><div class="sk" style="width:40%"></div><div class="sk"></div><div class="sk" style="width:85%"></div><div class="sk" style="width:60%"></div></div>`,say:'Открываем маршрут'};
+}
+function viewError(){
+  return {bg:'error',scrim:'focus',html:`
+  ${logoSm()}
+  ${sevi('angry','Севи сердится',220)}
+  <section class="glass cut pad stack-16">
+    <span style="color:var(--err-dark)">${ic('alert').replace('<svg','<svg style="width:36px;height:36px"')}</span>
+    <h1 class="h1">Не удалось открыть историю</h1>
+    <p class="story">Попробуй загрузить её ещё раз. Если ошибка повторится, вернись к маршруту и открой точку позже.</p>
+  </section>
+  <div class="stack">${btn('Повторить',{act:'retry',iconL:'retry'})}${btn('К маршруту',{kind:'glass',href:'route',iconL:'left'})}</div>`,say:'Не удалось открыть историю'};
+}
+function viewOffline(){
+  return {bg:'error',scrim:'focus',html:`
+  ${logoSm()}
+  ${sevi('sad','Севи грустит',220)}
+  <section class="glass cut pad stack-16">
+    <span style="color:var(--amber-300)">${ic('wifioff').replace('<svg','<svg style="width:36px;height:36px"')}</span>
+    <h1 class="h1">Нет соединения</h1>
+    <p class="story">Проверь связь и попробуй снова. Уже открытые записи останутся в этом браузере.</p>
+  </section>
+  <div class="stack">${btn('Повторить',{act:'retry',iconL:'retry'})}${btn('Моя коллекция',{kind:'glass',href:'collection',iconL:'coll'})}</div>`,say:'Нет соединения'};
+}
+
+/* ---------- Обзор экранов ---------- */
+const SHOTS=[
+ ['01','Вход и площадка','start',[]],
+ ['02','Активный маршрут','route',[1,2]],
+ ['02','Карта маршрута','map',[1,2]],
+ ['03','Открытая остановка · точка 1','stop-1',[1],{flash:'first'}],
+ ['03','Остановка · ответ и переход','stop-2',[1,2],{rev:{2:{hint:1,answer:1}}}],
+ ['03','Остановка · раннее открытие','stop-4',[1,4],{flash:'early'}],
+ ['03','Остановка · спокойный режим, точка 5','stop-5',[1,2,3,4,5],{flash:'first'}],
+ ['03','Точка ещё не открыта','stop-3',[1,2]],
+ ['04','Коллекция','collection',[1,2]],
+ ['05','Маршрут пройден','finish',[1,2,3,4,5,6]],
+ ['06','Памятка','memo',[1,2,3,4,5,6],{line:'Расскажу про лодку: за видом моря всегда стоит чья-то работа.'}],
+ ['07','Коллекция — пустая','collection',[]],
+ ['08','Коллекция — полная','collection',[1,2,3,4,5,6]],
+ ['09','QR — сканирование','scan',[1,2]],
+ ['10','Возвращение к маршруту','return',[1,2]],
+ ['11','Загрузка','loading',[]],
+ ['12','Ошибка загрузки','error',[]],
+ ['13','Нет сети','offline',[1,2]]
+];
+function viewScreens(){
+  PREVIEW=null;
+  return {bg:'start',scrim:'reading',html:`
+  <div class="top">${backTo('start','На старт')}</div>
+  <header class="stack" style="gap:8px"><span class="label">согласование макета</span><h1 class="h1">Все экраны</h1><p class="body muted">Каждый экран открывается с условным прогрессом. Настоящий прогресс в браузере не меняется.</p></header>
+  <nav class="stack idx" style="gap:8px">${SHOTS.map((s,i)=>`<a class="glass cut2" href="#${s[2]}" data-act="preview" data-i="${i}"><span>${s[0]}</span><span class="grow">${s[1]}</span>${ic('right').replace('<svg','<svg style="width:18px;height:18px;flex:none"')}</a>`).join('')}</nav>
+  <section class="stack-16"><span class="label">иконки моделей: обычная и активная</span><div class="strip">${POINTS.map(p=>ico(p.id,false)).join('')}</div><div class="strip">${POINTS.map(p=>ico(p.id,true)).join('')}</div></section>
+  <section class="stack-16"><span class="label">тестовые qr-коды</span><p class="body muted">Распечатай или открой на втором экране и сканируй со страницы «QR — сканирование». В коде лежит текст вида «dva-morya:stop-3».</p><div class="qrs" id="qrs"></div></section>
+  <section class="panel cut pad stack"><span class="label">прогресс</span><p class="body">Сейчас в этом браузере: ${S.opened.length} из 6.</p>${btn('Сбросить мой прогресс',{kind:'ghost-panel',act:'reset'})}</section>`,
+  after:()=>{const box=document.getElementById('qrs');const draw=()=>{if(!window.QRCode){setTimeout(draw,200);return;}POINTS.forEach(p=>{const fig=document.createElement('figure');const q=document.createElement('div');q.className='q';fig.appendChild(q);fig.insertAdjacentHTML('beforeend',`<figcaption>№ ${p.id} · ${p.model}</figcaption>`);box.appendChild(fig);new QRCode(q,{text:'dva-morya:stop-'+p.id,width:240,height:240,colorDark:'#09133D',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});});};draw();}};
+}
+
+/* ---------- События ---------- */
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');if(!a)return;
+  const act=a.dataset.act,id=+a.dataset.id;
+  if(act==='hint'||act==='answer'){const s=st();s.rev[id]=Object.assign(s.rev[id]||{},act==='hint'?{hint:1}:{hint:1,answer:1});save();const y=window.scrollY;render();window.scrollTo(0,y);
+    requestAnimationFrame(()=>{const el=document.getElementById(act==='answer'?'next':'riddle');if(el)el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});});}
+  else if(act==='demo-scan')registerScan(id);
+  else if(act==='demo-bad')scanError('unknown');
+  else if(act==='retry'){if(navigator.onLine){go('route');}else announce('Соединения всё ещё нет');}
+  else if(act==='finish-skip'){const s=st();s.finished=true;save();go('memo');}
+  else if(act==='reset'){S=blank();save();try{sessionStorage.removeItem('dm-back')}catch(_){}render();}
+  else if(act==='exit-preview'){PREVIEW=null;}
+  else if(act==='preview'){const sh=SHOTS[+a.dataset.i];const o=sh[4]||{};PREVIEW=Object.assign(blank(),{opened:sh[3].slice(),line:o.line||'',rev:o.rev||{},started:true});
+    if(o.flash){const fid=+sh[2].split('-')[1];flash={id:fid,kind:o.flash};}
+    if(sh[2]==='offline'){e.preventDefault();paint(viewOffline());history.replaceState(null,'','#offline');}
+    else if(sh[2]==='loading'){e.preventDefault();paint(viewLoading());history.replaceState(null,'','#loading');}}
+});
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='lineform')return;e.preventDefault();
+  const v=document.getElementById('line').value.trim();const s=st();s.line=v;s.finished=true;save();
+  go(v?'memo':'finish');
+});
+render();
+</script>
+</body>
+</html>
