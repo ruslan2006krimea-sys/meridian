@@ -44,9 +44,9 @@ img,svg{display:block}
 .scrim.reading{background:rgba(5,12,41,.8)}
 .scrim.camera{background:#07090E}
 .pat{position:absolute;z-index:4;pointer-events:none;transition:opacity .4s}
-.pat.waves{left:0;right:0;bottom:0;height:34%;background:url(img/waves-amber.svg) 0 0/80px 24px repeat;opacity:.3;-webkit-mask-image:linear-gradient(transparent,#000 70%);mask-image:linear-gradient(transparent,#000 70%)}
-.pat.waves-top{left:0;right:0;top:0;height:26%;background:url(img/waves-fog.svg) 0 0/80px 24px repeat;opacity:.14;-webkit-mask-image:linear-gradient(#000,transparent);mask-image:linear-gradient(#000,transparent)}
-.pat.rings{top:-170px;right:-200px;width:460px;height:560px;background:url(img/rings.svg) no-repeat 0 0/100% 100%;opacity:.55}
+.pat.waves{left:0;right:0;bottom:0;height:34%;background:url(waves-amber.svg) 0 0/80px 24px repeat;opacity:.3;-webkit-mask-image:linear-gradient(transparent,#000 70%);mask-image:linear-gradient(transparent,#000 70%)}
+.pat.waves-top{left:0;right:0;top:0;height:26%;background:url(waves-fog.svg) 0 0/80px 24px repeat;opacity:.14;-webkit-mask-image:linear-gradient(#000,transparent);mask-image:linear-gradient(#000,transparent)}
+.pat.rings{top:-170px;right:-200px;width:460px;height:560px;background:url(rings.svg) no-repeat 0 0/100% 100%;opacity:.55}
 .pat.off{opacity:0}
 @media (min-width:700px){.pat.rings{right:calc(50% - 400px)}}
 
@@ -454,12 +454,12 @@ const nextId=()=>{for(const p of POINTS)if(!isOpen(p.id))return p.id;return null
 let flash=null, justOpened=null, booted=false;
 
 /* ---------- Иконки моделей: обычная / активная ---------- */
-const ico=(id,on,cls='')=>`<img class="ico ${cls}" src="img/icon-${id}${on?'-on':''}.png" alt="" width="64" height="64">`;
+const ico=(id,on,cls='')=>`<img class="ico ${cls}" src="icon-${id}${on?'-on':''}.png" alt="" width="64" height="64">`;
 
 /* ---------- Логотип ---------- */
-const logoBig=()=>`<a class="logo" href="#start" aria-label="Меридиан. Херсонес × Соловки"><img class="em" src="img/logo-emblem.png" alt=""><span class="wm" aria-hidden="true">Меридиан</span><span class="tl" aria-hidden="true">Херсонес <b>×</b> Соловки</span></a>`;
-const logoSm=()=>`<a class="logo-sm" href="#start" aria-label="Меридиан, на старт"><img class="em" src="img/logo-emblem.png" alt=""><span class="wm">Меридиан</span></a>`;
-const sevi=(pose,alt,w=260)=>`<img class="sevi-img" src="img/sevi/${pose}.png" alt="${alt}" style="width:min(72%,${w}px)">`;
+const logoBig=()=>`<a class="logo" href="#start" aria-label="Меридиан. Херсонес × Соловки"><img class="em" src="logo-emblem.png" alt=""><span class="wm" aria-hidden="true">Меридиан</span><span class="tl" aria-hidden="true">Херсонес <b>×</b> Соловки</span></a>`;
+const logoSm=()=>`<a class="logo-sm" href="#start" aria-label="Меридиан, на старт"><img class="em" src="logo-emblem.png" alt=""><span class="wm">Меридиан</span></a>`;
+const sevi=(pose,alt,w=260)=>`<img class="sevi-img" src="sevi-${pose}.png" alt="${alt}" style="width:min(72%,${w}px)">`;
 const mascot=()=>sevi('happy','Севи — маскот маршрута',280);
 
 /* ---------- Карта маршрута (схема Нового Херсонеса в палитре бренда) ---------- */
@@ -474,7 +474,7 @@ function mapSVG(){
   for(const p of POINTS){
     const [x,y]=PLATE[p.id],W=w(p),on=isOpen(p.id);
     if(p.id===6||p.id===3) PLATE[p.id][0]=x; // фиксированные позиции
-    plates+=`<g><rect x="${x}" y="${y}" width="${W}" height="72" rx="18" fill="#F4F8FF" stroke="#A8BAE7" stroke-width="1.5"/><image href="img/icon-${p.id}${on?'-on':''}.png" x="${x+10}" y="${y+10}" width="52" height="52"/><text x="${x+72}" y="${y+33}" font-family="Inter,sans-serif" font-weight="600" font-size="23" fill="#09133D">${p.model}</text><text x="${x+72}" y="${y+56}" font-family="Inter,sans-serif" font-size="16" fill="#55585F">${esc(p.zone)}</text></g>`;
+    plates+=`<g><rect x="${x}" y="${y}" width="${W}" height="72" rx="18" fill="#F4F8FF" stroke="#A8BAE7" stroke-width="1.5"/><image href="icon-${p.id}${on?'-on':''}.png" x="${x+10}" y="${y+10}" width="52" height="52"/><text x="${x+72}" y="${y+33}" font-family="Inter,sans-serif" font-weight="600" font-size="23" fill="#09133D">${p.model}</text><text x="${x+72}" y="${y+56}" font-family="Inter,sans-serif" font-size="16" fill="#55585F">${esc(p.zone)}</text></g>`;
     const [cx,cy]=NODES[p.id];const st=on?'done':p.id===nx?'next':'ahead';
     const fill=st==='done'?'#D3873C':st==='next'?'#F4F8FF':'#09133D', col=st==='ahead'?'#FFFFFF':'#03062C';
     const s=26,c=9;
@@ -510,7 +510,7 @@ window.addEventListener('offline',()=>{if(['','start','route','scan','return'].i
 function cur(){return (location.hash||'').slice(1);}
 function setBg(v){
   scrim.className='scrim '+(v.scrim||'focus');
-  if(v.bg){const src='img/photo/'+v.bg+'.jpg';if(photo.getAttribute('src')!==src)photo.src=src;photo.hidden=false;}else{photo.hidden=true;}
+  if(v.bg){const src='photo-'+v.bg+'.jpg';if(photo.getAttribute('src')!==src)photo.src=src;photo.hidden=false;}else{photo.hidden=true;}
   document.getElementById('patRings').classList.toggle('off',!v.rings);
   document.getElementById('patWaves').classList.toggle('off',v.waves===false);
   document.getElementById('patTop').classList.toggle('off',!v.wavesTop);
@@ -663,7 +663,7 @@ function viewStop(id){
   ${topbar(backTo('route','К маршруту'))}
   ${toast}
   <header class="stack" style="gap:6px"><span class="label">точка ${pad2(id)} · ${p.zone}</span><h1 class="h1">${p.title}</h1></header>
-  <section class="glass cut photo-card"><div class="ph" style="background-image:url(img/photo/p${id}.jpg)" role="img" aria-label="Фото: ${p.model}, Соловки"></div><div class="model">${ico(id,true,'big '+(firstOpen?'pop':''))}<div class="grow stack" style="gap:8px"><p class="r-title" style="font-size:20px;line-height:24px">${p.model}</p><p class="cap muted">${p.proto}</p><div class="tags"><span class="tag edit">Современная модель</span></div></div></div></section>
+  <section class="glass cut photo-card"><div class="ph" style="background-image:url(photo-p${id}.jpg)" role="img" aria-label="Фото: ${p.model}, Соловки"></div><div class="model">${ico(id,true,'big '+(firstOpen?'pop':''))}<div class="grow stack" style="gap:8px"><p class="r-title" style="font-size:20px;line-height:24px">${p.model}</p><p class="cap muted">${p.proto}</p><div class="tags"><span class="tag edit">Современная модель</span></div></div></div></section>
   <section class="panel cut pad stack-16" aria-label="История Нового Херсонеса">
     <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><span class="label">этот берег · новый херсонес</span><span class="tag fact">Историческая справка</span></div>
     <div class="story">${p.here.map(t=>`<p>${t}</p>`).join('')}</div>
